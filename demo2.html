@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GraphQL Demo 1</title>
+  <title>GraphQL Demo 2</title>
   <link rel="icon" href="data:,">
   <style>
     :root {
@@ -27,7 +27,7 @@
     }
 
     h1 {
-      margin: 0 0 12px 0;
+      margin: 0 0 6px 0;
       font-size: 20px;
     }
 
@@ -58,9 +58,7 @@
       .compare {
         grid-template-columns: 1fr;
       }
-    }
 
-    @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
       }
@@ -76,6 +74,7 @@
     .panel h2 {
       margin: 0 0 8px 0;
       font-size: 16px;
+      color: var(--g-muted);
     }
 
     .muted {
@@ -103,7 +102,7 @@
 
     textarea {
       width: 100%;
-      min-height: 260px;
+      min-height: 320px;
       resize: vertical;
       box-sizing: border-box;
       padding: 10px;
@@ -116,22 +115,6 @@
     }
 
     textarea:focus {
-      outline: 2px solid var(--g-hover);
-      outline-offset: 2px;
-      border-color: rgba(255, 255, 255, 0.4);
-    }
-
-    input[type="text"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--g-border);
-      background: var(--g-surface);
-      color: var(--g-text);
-    }
-
-    input[type="text"]:focus {
       outline: 2px solid var(--g-hover);
       outline-offset: 2px;
       border-color: rgba(255, 255, 255, 0.4);
@@ -161,7 +144,7 @@
       padding: 12px;
       border: 1px solid var(--g-border);
       border-radius: 8px;
-      min-height: 260px;
+      min-height: 320px;
       overflow: auto;
       white-space: pre-wrap;
       word-break: break-word;
@@ -186,58 +169,49 @@
     .stack pre {
       min-height: unset;
     }
-
-    .panel h2 {
-      color: var(--g-muted);
-    }
   </style>
 </head>
 <body>
-  <h1>GraphQL Demo 1: Country Query</h1>
+  <h1>GraphQL Demo 2: Query lồng nhau (countries → languages → name)</h1>
   <div class="muted"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a></div>
 
   <div class="compare">
     <div class="panel">
-      <h2>REST API (typical approach)</h2>
-      <div class="muted">Often you end up needing multiple endpoints (or custom query params) to return different field combinations.</div>
-      <div class="code">GET /countries/VN/name-currency
-GET /countries/VN/name-emoji
-GET /countries/VN/name-capital</div>
-      <div class="muted" style="margin-top: 8px;">You either create many endpoints, or keep adding special query parameters to control fields.</div>
+      <h2>REST API (nested data)</h2>
+      <div class="muted">To get countries <b>and</b> languages, REST often becomes multiple endpoints / multiple requests.</div>
+      <div class="code">GET /countries
+
+# then for each country:
+GET /countries/{code}/languages</div>
+      <div class="muted" style="margin-top: 8px;">This can turn into the “N+1 requests” problem.</div>
     </div>
 
     <div class="panel">
-      <h2>GraphQL (this demo)</h2>
-      <div class="muted"><b>One endpoint</b>, and you request exactly the fields you need by changing the query.</div>
-      <div class="code">query ($code: ID!) {
-  country(code: $code) {
+      <h2>GraphQL (nested query)</h2>
+      <div class="muted"><b>One request</b> can ask for nested related data in one response.</div>
+      <div class="code">POST https://countries.trevorblades.com/
+
+query {
+  countries {
+    code
     name
-    capital
-    # try: emoji, currency, languages { name }
+    languages {
+      name
+    }
   }
 }</div>
-      <div class="muted" style="margin-top: 8px;">SQL mental model (rough analogy):</div>
-      <div class="code">SELECT name, capital
-FROM country
-WHERE code = $code;</div>
-      <div class="muted" style="margin-top: 8px;">GraphQL is not SQL — the server decides how to fetch data — but the <b>fields you list</b> are like the <b>columns you select</b>.</div>
-      <div class="muted" style="margin-top: 8px;">Same URL every time — only the query changes.</div>
+      <div class="muted" style="margin-top: 8px;">You control the shape of the returned JSON by editing the query.</div>
     </div>
   </div>
 
   <div class="grid">
     <div class="panel">
       <h2>Query</h2>
-      <label for="countryCode">Country code</label>
-      <input id="countryCode" type="text" value="VN" />
-
       <label for="query">GraphQL query</label>
-      <div class="muted">Tip: edit the selection set (add/remove fields like <b>emoji</b>, <b>currency</b>, <b>languages</b>) and re-run. Think: <b>GraphQL fields</b> ≈ <b>SQL SELECT columns</b>.</div>
+      <div class="muted">Tip: try removing <b>name</b> or adding <b>emoji</b> to see the response (and SQL preview) change.</div>
       <textarea id="query" spellcheck="false"></textarea>
 
-      <button type="button" onclick="getCountry(document.getElementById('countryCode').value)">
-        getCountry(country)
-      </button>
+      <button type="button" onclick="runQuery()">runQuery()</button>
     </div>
 
     <div class="panel">
@@ -258,18 +232,21 @@ WHERE code = $code;</div>
   <script>
     const endpoint = "https://countries.trevorblades.com/";
 
-    const defaultQuery = `query ($code: ID!) {
-  country(code: $code) {
+    const defaultQuery = `query {
+  countries {
+    code
     name
-    capital
+    languages {
+      name
+    }
   }
 }`;
 
     const queryEl = document.getElementById("query");
-    queryEl.value = defaultQuery;
-
     const sqlEl = document.getElementById("sql");
-    const countryCodeEl = document.getElementById("countryCode");
+    const resultEl = document.getElementById("result");
+
+    queryEl.value = defaultQuery;
 
     function findMatchingBrace(text, openBraceIndex) {
       let depth = 0;
@@ -364,7 +341,6 @@ WHERE code = $code;</div>
         }
 
         if (selectionText.startsWith("...", i)) {
-          // Skip fragments/spreads
           while (i < selectionText.length && selectionText[i] !== "\n") {
             i++;
           }
@@ -380,7 +356,6 @@ WHERE code = $code;</div>
         i = id.next;
 
         i = skipWhitespaceAndComments(selectionText, i);
-        // Handle alias: aliasName: realField
         if (selectionText[i] === ":") {
           i++;
           i = skipWhitespaceAndComments(selectionText, i);
@@ -392,7 +367,6 @@ WHERE code = $code;</div>
           i = skipWhitespaceAndComments(selectionText, i);
         }
 
-        // Skip arguments if any
         i = skipWhitespaceAndComments(selectionText, i);
         if (selectionText[i] === "(") {
           i = skipParens(selectionText, i);
@@ -408,7 +382,6 @@ WHERE code = $code;</div>
           }
           const inner = selectionText.slice(open + 1, close);
           const innerFields = [];
-          // One-level inner field names (best-effort)
           let j = 0;
           while (j < inner.length) {
             j = skipWhitespaceAndComments(inner, j);
@@ -451,9 +424,8 @@ WHERE code = $code;</div>
       return { scalarFields, nestedFields };
     }
 
-    function extractCountrySelection(queryText) {
-      // Find "country" call and its selection set.
-      const match = /\bcountry\s*(\([^)]*\))?\s*\{/m.exec(queryText);
+    function extractCountriesSelection(queryText) {
+      const match = /\bcountries\s*(\([^)]*\))?\s*\{/m.exec(queryText);
       if (!match || typeof match.index !== "number") {
         return null;
       }
@@ -472,90 +444,46 @@ WHERE code = $code;</div>
       return { argsText, selectionText };
     }
 
-    function extractCodeWhereValue(argsText, currentCodeValue) {
-      if (!argsText) {
-        return { whereValue: "$code", codeHint: "" };
-      }
-      const m = /\bcode\s*:\s*([^,)]+)\s*/.exec(argsText);
-      if (!m) {
-        return { whereValue: "$code", codeHint: "" };
-      }
-
-      const raw = m[1].trim();
-      if (raw.startsWith("$")) {
-        const trimmed = (currentCodeValue ?? "").trim().toUpperCase();
-        const codeHint = trimmed ? `-- current ${raw} = '${trimmed}'\n` : "";
-        return { whereValue: raw, codeHint };
-      }
-
-      const stringMatch = /^"([^\"]*)"$/.exec(raw);
-      if (stringMatch) {
-        const safe = stringMatch[1].replace(/'/g, "''");
-        return { whereValue: `'${safe}'`, codeHint: "" };
-      }
-
-      return { whereValue: raw, codeHint: "" };
-    }
-
-    function buildSqlPreview(queryText, currentCodeValue) {
+    function buildSqlPreview(queryText) {
       if (!queryText || !queryText.trim()) {
         return "";
       }
 
-      const extracted = extractCountrySelection(queryText);
+      const extracted = extractCountriesSelection(queryText);
       if (!extracted) {
-        return "-- No country(...) selection found";
+        return "-- No countries { ... } selection found";
       }
 
       const { scalarFields, nestedFields } = parseTopLevelFields(extracted.selectionText);
-
       const columns = scalarFields.length ? scalarFields.join(", ") : "*";
 
-      const { whereValue, codeHint } = extractCodeWhereValue(extracted.argsText, currentCodeValue);
-
       const nestedComment = nestedFields.length
-        ? `\n\n-- nested selections (not 1:1 SQL columns):\n-- ${nestedFields.join("\n-- ")}`
+        ? `\n\n-- nested selections (mental model):\n-- ${nestedFields.join("\n-- ")}\n-- (typically requires JOINs / additional lookups on the server)`
         : "";
 
-      return `${codeHint}SELECT ${columns}\nFROM country\nWHERE code = ${whereValue};${nestedComment}`;
+      // We don't include WHERE here because `countries` returns many rows.
+      return `SELECT ${columns}\nFROM country;${nestedComment}`;
     }
 
     function updateSqlPreview() {
-      const queryText = queryEl.value;
-      const codeVal = countryCodeEl.value;
-      sqlEl.textContent = buildSqlPreview(queryText, codeVal) || "";
+      sqlEl.textContent = buildSqlPreview(queryEl.value) || "";
     }
 
     queryEl.addEventListener("input", updateSqlPreview);
-    countryCodeEl.addEventListener("input", updateSqlPreview);
     updateSqlPreview();
 
-    async function getCountry(countryCode) {
-      const resultEl = document.getElementById("result");
+    async function runQuery() {
       const queryText = queryEl.value;
-      const trimmedCode = (countryCode ?? "").trim().toUpperCase();
-
-      if (!trimmedCode) {
-        resultEl.textContent = "Please enter a country code (e.g. VN, US, JP).";
-        return;
-      }
-
       resultEl.textContent = "Loading...";
       updateSqlPreview();
 
       try {
-        const payload = { query: queryText };
-
-        if (/\$code\b/.test(queryText)) {
-          payload.variables = { code: trimmedCode };
-        }
-
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ query: queryText })
         });
 
         const data = await response.json();
@@ -565,7 +493,7 @@ WHERE code = $code;</div>
       }
     }
 
-    window.getCountry = getCountry;
+    window.runQuery = runQuery;
   </script>
 </body>
 </html>
