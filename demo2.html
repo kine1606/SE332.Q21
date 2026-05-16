@@ -332,6 +332,7 @@ query {
     function parseTopLevelFields(selectionText) {
       const scalarFields = [];
       const nestedFields = [];
+      const nestedSelectionMap = {};
 
       let i = 0;
       while (i < selectionText.length) {
@@ -415,13 +416,14 @@ query {
             }
           }
           nestedFields.push(`${fieldName} { ${innerFields.length ? innerFields.join(", ") : "..."} }`);
+          nestedSelectionMap[fieldName] = innerFields;
           i = close + 1;
         } else {
           scalarFields.push(fieldName);
         }
       }
 
-      return { scalarFields, nestedFields };
+      return { scalarFields, nestedFields, nestedSelectionMap };
     }
 
     function extractCountriesSelection(queryText) {
@@ -454,15 +456,29 @@ query {
         return "-- No countries { ... } selection found";
       }
 
-      const { scalarFields, nestedFields } = parseTopLevelFields(extracted.selectionText);
-      const columns = scalarFields.length ? scalarFields.join(", ") : "*";
+      const { scalarFields, nestedFields, nestedSelectionMap } = parseTopLevelFields(extracted.selectionText);
 
+      // If the query asks for nested languages, show a JOIN-style SQL mental model.
+      const languageFields = nestedSelectionMap.languages;
+      if (Array.isArray(languageFields)) {
+        const countryCols = (scalarFields.length ? scalarFields : ["code", "name"]).map(f => `c.${f}`);
+        const langCols = (languageFields.length ? languageFields : ["name"]).map(f => {
+          const alias = f === "name" ? "language_name" : `language_${f}`;
+          return `l.${f} AS ${alias}`;
+        });
+
+        const selectCols = [...countryCols, ...langCols].join(",\n    ");
+
+        return `SELECT\n    ${selectCols}\nFROM countries c\nLEFT JOIN country_languages cl\n    ON c.code = cl.country_code\nLEFT JOIN languages l\n    ON cl.language_code = l.code;\n\n-- Note: SQL JOIN returns flat rows; GraphQL groups languages under each country.`;
+      }
+
+      const columns = scalarFields.length ? scalarFields.map(f => `c.${f}`).join(", ") : "c.*";
       const nestedComment = nestedFields.length
         ? `\n\n-- nested selections (mental model):\n-- ${nestedFields.join("\n-- ")}\n-- (typically requires JOINs / additional lookups on the server)`
         : "";
 
       // We don't include WHERE here because `countries` returns many rows.
-      return `SELECT ${columns}\nFROM country;${nestedComment}`;
+      return `SELECT ${columns}\nFROM countries c;${nestedComment}`;
     }
 
     function updateSqlPreview() {
