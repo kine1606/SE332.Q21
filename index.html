@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>GraphQL Demo 1</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
       color-scheme: dark;
@@ -161,6 +162,22 @@
       font-size: 13px;
     }
 
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stack h3 {
+      margin: 0;
+      font-size: 13px;
+      color: var(--g-muted);
+      font-weight: 600;
+    }
+
+    .stack pre {
+      min-height: unset;
+    }
+
     .panel h2 {
       color: var(--g-muted);
     }
@@ -189,6 +206,11 @@ GET /countries/VN/name-capital</div>
     # try: emoji, currency, languages { name }
   }
 }</div>
+      <div class="muted" style="margin-top: 8px;">SQL mental model (rough analogy):</div>
+      <div class="code">SELECT name, capital
+FROM country
+WHERE code = $code;</div>
+      <div class="muted" style="margin-top: 8px;">GraphQL is not SQL — the server decides how to fetch data — but the <b>fields you list</b> are like the <b>columns you select</b>.</div>
       <div class="muted" style="margin-top: 8px;">Same URL every time — only the query changes.</div>
     </div>
   </div>
@@ -200,7 +222,7 @@ GET /countries/VN/name-capital</div>
       <input id="countryCode" type="text" value="VN" />
 
       <label for="query">GraphQL query</label>
-      <div class="muted">Tip: edit the selection set (add/remove fields like <b>emoji</b>, <b>currency</b>, <b>languages</b>) and re-run.</div>
+      <div class="muted">Tip: edit the selection set (add/remove fields like <b>emoji</b>, <b>currency</b>, <b>languages</b>) and re-run. Think: <b>GraphQL fields</b> ≈ <b>SQL SELECT columns</b>.</div>
       <textarea id="query" spellcheck="false"></textarea>
 
       <button type="button" onclick="getCountry(document.getElementById('countryCode').value)">
@@ -210,7 +232,16 @@ GET /countries/VN/name-capital</div>
 
     <div class="panel">
       <h2>Result</h2>
-      <pre id="result">Click the button to run the query.</pre>
+      <div class="stack">
+        <div>
+          <h3>SQL mental model (auto-generated)</h3>
+          <pre id="sql">Edit the query to see the SQL preview.</pre>
+        </div>
+        <div>
+          <h3>Result JSON</h3>
+          <pre id="result">Click the button to run the query.</pre>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -227,6 +258,268 @@ GET /countries/VN/name-capital</div>
     const queryEl = document.getElementById("query");
     queryEl.value = defaultQuery;
 
+    const sqlEl = document.getElementById("sql");
+    const countryCodeEl = document.getElementById("countryCode");
+
+    function findMatchingBrace(text, openBraceIndex) {
+      let depth = 0;
+      for (let i = openBraceIndex; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === "{") {
+          depth++;
+        } else if (ch === "}") {
+          depth--;
+          if (depth === 0) {
+            return i;
+          }
+        }
+      }
+      return -1;
+    }
+
+    function skipWhitespaceAndComments(text, i) {
+      while (i < text.length) {
+        const ch = text[i];
+        if (ch === "#") {
+          while (i < text.length && text[i] !== "\n") {
+            i++;
+          }
+          continue;
+        }
+        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === ",") {
+          i++;
+          continue;
+        }
+        break;
+      }
+      return i;
+    }
+
+    function readIdentifier(text, i) {
+      const start = i;
+      const isStart = (c) => /[A-Za-z_]/.test(c);
+      const isPart = (c) => /[A-Za-z0-9_]/.test(c);
+      if (i >= text.length || !isStart(text[i])) {
+        return { name: null, next: i };
+      }
+      i++;
+      while (i < text.length && isPart(text[i])) {
+        i++;
+      }
+      return { name: text.slice(start, i), next: i };
+    }
+
+    function skipParens(text, i) {
+      if (text[i] !== "(") {
+        return i;
+      }
+      let depth = 0;
+      while (i < text.length) {
+        const ch = text[i];
+        if (ch === "(") {
+          depth++;
+        } else if (ch === ")") {
+          depth--;
+          if (depth === 0) {
+            return i + 1;
+          }
+        } else if (ch === '"') {
+          i++;
+          while (i < text.length) {
+            const q = text[i];
+            if (q === "\\") {
+              i += 2;
+              continue;
+            }
+            if (q === '"') {
+              break;
+            }
+            i++;
+          }
+        }
+        i++;
+      }
+      return i;
+    }
+
+    function parseTopLevelFields(selectionText) {
+      const scalarFields = [];
+      const nestedFields = [];
+
+      let i = 0;
+      while (i < selectionText.length) {
+        i = skipWhitespaceAndComments(selectionText, i);
+        if (i >= selectionText.length) {
+          break;
+        }
+
+        if (selectionText.startsWith("...", i)) {
+          // Skip fragments/spreads
+          while (i < selectionText.length && selectionText[i] !== "\n") {
+            i++;
+          }
+          continue;
+        }
+
+        const id = readIdentifier(selectionText, i);
+        if (!id.name) {
+          i++;
+          continue;
+        }
+        let fieldName = id.name;
+        i = id.next;
+
+        i = skipWhitespaceAndComments(selectionText, i);
+        // Handle alias: aliasName: realField
+        if (selectionText[i] === ":") {
+          i++;
+          i = skipWhitespaceAndComments(selectionText, i);
+          const real = readIdentifier(selectionText, i);
+          if (real.name) {
+            fieldName = real.name;
+            i = real.next;
+          }
+          i = skipWhitespaceAndComments(selectionText, i);
+        }
+
+        // Skip arguments if any
+        i = skipWhitespaceAndComments(selectionText, i);
+        if (selectionText[i] === "(") {
+          i = skipParens(selectionText, i);
+        }
+        i = skipWhitespaceAndComments(selectionText, i);
+
+        if (selectionText[i] === "{") {
+          const open = i;
+          const close = findMatchingBrace(selectionText, open);
+          if (close === -1) {
+            nestedFields.push(`${fieldName} { ... }`);
+            break;
+          }
+          const inner = selectionText.slice(open + 1, close);
+          const innerFields = [];
+          // One-level inner field names (best-effort)
+          let j = 0;
+          while (j < inner.length) {
+            j = skipWhitespaceAndComments(inner, j);
+            if (j >= inner.length) {
+              break;
+            }
+            if (inner.startsWith("...", j)) {
+              while (j < inner.length && inner[j] !== "\n") {
+                j++;
+              }
+              continue;
+            }
+            const innerId = readIdentifier(inner, j);
+            if (!innerId.name) {
+              j++;
+              continue;
+            }
+            innerFields.push(innerId.name);
+            j = innerId.next;
+            j = skipWhitespaceAndComments(inner, j);
+            if (inner[j] === "(") {
+              j = skipParens(inner, j);
+            }
+            j = skipWhitespaceAndComments(inner, j);
+            if (inner[j] === "{") {
+              const innerClose = findMatchingBrace(inner, j);
+              if (innerClose === -1) {
+                break;
+              }
+              j = innerClose + 1;
+            }
+          }
+          nestedFields.push(`${fieldName} { ${innerFields.length ? innerFields.join(", ") : "..."} }`);
+          i = close + 1;
+        } else {
+          scalarFields.push(fieldName);
+        }
+      }
+
+      return { scalarFields, nestedFields };
+    }
+
+    function extractCountrySelection(queryText) {
+      // Find "country" call and its selection set.
+      const match = /\bcountry\s*(\([^)]*\))?\s*\{/m.exec(queryText);
+      if (!match || typeof match.index !== "number") {
+        return null;
+      }
+
+      const openBraceIndex = queryText.indexOf("{", match.index);
+      if (openBraceIndex === -1) {
+        return null;
+      }
+      const closeBraceIndex = findMatchingBrace(queryText, openBraceIndex);
+      if (closeBraceIndex === -1) {
+        return null;
+      }
+
+      const argsText = match[1] || "";
+      const selectionText = queryText.slice(openBraceIndex + 1, closeBraceIndex);
+      return { argsText, selectionText };
+    }
+
+    function extractCodeWhereValue(argsText, currentCodeValue) {
+      if (!argsText) {
+        return { whereValue: "$code", codeHint: "" };
+      }
+      const m = /\bcode\s*:\s*([^,)]+)\s*/.exec(argsText);
+      if (!m) {
+        return { whereValue: "$code", codeHint: "" };
+      }
+
+      const raw = m[1].trim();
+      if (raw.startsWith("$")) {
+        const trimmed = (currentCodeValue ?? "").trim().toUpperCase();
+        const codeHint = trimmed ? `-- current ${raw} = '${trimmed}'\n` : "";
+        return { whereValue: raw, codeHint };
+      }
+
+      const stringMatch = /^"([^\"]*)"$/.exec(raw);
+      if (stringMatch) {
+        const safe = stringMatch[1].replace(/'/g, "''");
+        return { whereValue: `'${safe}'`, codeHint: "" };
+      }
+
+      return { whereValue: raw, codeHint: "" };
+    }
+
+    function buildSqlPreview(queryText, currentCodeValue) {
+      if (!queryText || !queryText.trim()) {
+        return "";
+      }
+
+      const extracted = extractCountrySelection(queryText);
+      if (!extracted) {
+        return "-- No country(...) selection found";
+      }
+
+      const { scalarFields, nestedFields } = parseTopLevelFields(extracted.selectionText);
+
+      const columns = scalarFields.length ? scalarFields.join(", ") : "*";
+
+      const { whereValue, codeHint } = extractCodeWhereValue(extracted.argsText, currentCodeValue);
+
+      const nestedComment = nestedFields.length
+        ? `\n\n-- nested selections (not 1:1 SQL columns):\n-- ${nestedFields.join("\n-- ")}`
+        : "";
+
+      return `${codeHint}SELECT ${columns}\nFROM country\nWHERE code = ${whereValue};${nestedComment}`;
+    }
+
+    function updateSqlPreview() {
+      const queryText = queryEl.value;
+      const codeVal = countryCodeEl.value;
+      sqlEl.textContent = buildSqlPreview(queryText, codeVal) || "";
+    }
+
+    queryEl.addEventListener("input", updateSqlPreview);
+    countryCodeEl.addEventListener("input", updateSqlPreview);
+    updateSqlPreview();
+
     async function getCountry(countryCode) {
       const resultEl = document.getElementById("result");
       const queryText = queryEl.value;
@@ -238,6 +531,7 @@ GET /countries/VN/name-capital</div>
       }
 
       resultEl.textContent = "Loading...";
+      updateSqlPreview();
 
       try {
         const payload = { query: queryText };
