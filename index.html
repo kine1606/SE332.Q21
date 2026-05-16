@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GraphQL Demo 1</title>
+  <style>
+    :root {
+      color-scheme: dark;
+
+      /* GraphiQL dark theme colors (sampled from countries.trevorblades.com) */
+      --g-bg: rgb(33, 42, 59);
+      --g-surface: rgb(33, 42, 59);
+      --g-panel: rgba(255, 255, 255, 0.07);
+      --g-text: rgba(255, 255, 255, 0.92);
+      --g-muted: rgba(255, 255, 255, 0.75);
+      --g-border: rgba(183, 194, 215, 0.25);
+      --g-hover: rgba(183, 194, 215, 0.15);
+      --g-action: rgb(43, 171, 124);
+    }
+
+    body {
+      margin: 16px;
+      background: var(--g-bg);
+      color: var(--g-text);
+      line-height: 1.4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    h1 {
+      margin: 0 0 12px 0;
+      font-size: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 12px 0 16px;
+    }
+
+    @media (max-width: 900px) {
+      .compare {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      border: 1px solid var(--g-border);
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--g-panel);
+    }
+
+    .panel h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+    }
+
+    .muted {
+      color: var(--g-muted);
+      font-size: 13px;
+    }
+
+    .code {
+      margin: 8px 0 0 0;
+      padding: 10px;
+      border: 1px solid var(--g-border);
+      border-radius: 8px;
+      background: var(--g-surface);
+      font-family: monospace;
+      font-size: 12.5px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0 4px;
+      font-weight: 600;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--g-border);
+      background: var(--g-surface);
+      color: var(--g-text);
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    textarea:focus {
+      outline: 2px solid var(--g-hover);
+      outline-offset: 2px;
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--g-border);
+      background: var(--g-surface);
+      color: var(--g-text);
+    }
+
+    input[type="text"]:focus {
+      outline: 2px solid var(--g-hover);
+      outline-offset: 2px;
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.25);
+      background: var(--g-action);
+      color: rgba(0, 0, 0, 0.88);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      filter: brightness(1.03);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--g-border);
+      border-radius: 8px;
+      min-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--g-surface);
+      color: var(--g-text);
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .panel h2 {
+      color: var(--g-muted);
+    }
+  </style>
+</head>
+<body>
+  <h1>GraphQL Demo 1: Country Query</h1>
+
+  <div class="compare">
+    <div class="panel">
+      <h2>REST API (typical approach)</h2>
+      <div class="muted">Often you end up needing multiple endpoints (or custom query params) to return different field combinations.</div>
+      <div class="code">GET /countries/VN/name-currency
+GET /countries/VN/name-emoji
+GET /countries/VN/name-capital</div>
+      <div class="muted" style="margin-top: 8px;">You either create many endpoints, or keep adding special query parameters to control fields.</div>
+    </div>
+
+    <div class="panel">
+      <h2>GraphQL (this demo)</h2>
+      <div class="muted"><b>One endpoint</b>, and you request exactly the fields you need by changing the query.</div>
+      <div class="code">query ($code: ID!) {
+  country(code: $code) {
+    name
+    capital
+    # try: emoji, currency, languages { name }
+  }
+}</div>
+      <div class="muted" style="margin-top: 8px;">Same URL every time — only the query changes.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Query</h2>
+      <label for="countryCode">Country code</label>
+      <input id="countryCode" type="text" value="VN" />
+
+      <label for="query">GraphQL query</label>
+      <div class="muted">Tip: edit the selection set (add/remove fields like <b>emoji</b>, <b>currency</b>, <b>languages</b>) and re-run.</div>
+      <textarea id="query" spellcheck="false"></textarea>
+
+      <button type="button" onclick="getCountry(document.getElementById('countryCode').value)">
+        getCountry(country)
+      </button>
+    </div>
+
+    <div class="panel">
+      <h2>Result</h2>
+      <pre id="result">Click the button to run the query.</pre>
+    </div>
+  </div>
+
+  <script>
+    const endpoint = "https://countries.trevorblades.com/";
+
+    const defaultQuery = `query ($code: ID!) {
+  country(code: $code) {
+    name
+    capital
+  }
+}`;
+
+    const queryEl = document.getElementById("query");
+    queryEl.value = defaultQuery;
+
+    async function getCountry(countryCode) {
+      const resultEl = document.getElementById("result");
+      const queryText = queryEl.value;
+      const trimmedCode = (countryCode ?? "").trim().toUpperCase();
+
+      if (!trimmedCode) {
+        resultEl.textContent = "Please enter a country code (e.g. VN, US, JP).";
+        return;
+      }
+
+      resultEl.textContent = "Loading...";
+
+      try {
+        const payload = { query: queryText };
+
+        if (/\$code\b/.test(queryText)) {
+          payload.variables = { code: trimmedCode };
+        }
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        resultEl.textContent = String(err);
+      }
+    }
+
+    window.getCountry = getCountry;
+  </script>
+</body>
+</html>
