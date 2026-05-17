@@ -6,219 +6,249 @@
   <title>Demo 3: Aliases & Fragments</title>
   <link rel="icon" href="data:,">
   <style>
-    * {
-      box-sizing: border-box;
+    :root {
+      color-scheme: dark;
+
+      /* GraphiQL dark theme colors (sampled from countries.trevorblades.com) */
+      --g-bg: rgb(33, 42, 59);
+      --g-surface: rgb(33, 42, 59);
+      --g-panel: rgba(255, 255, 255, 0.07);
+      --g-text: rgba(255, 255, 255, 0.92);
+      --g-muted: rgba(255, 255, 255, 0.75);
+      --g-border: rgba(183, 194, 215, 0.25);
+      --g-hover: rgba(183, 194, 215, 0.15);
+      --g-action: rgb(43, 171, 124);
     }
 
     body {
-      margin: 0;
-      background: #f4f7fb;
-      color: #162033;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.5;
-    }
-
-    main {
-      width: min(1000px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 40px 0;
-    }
-
-    .hero {
-      margin-bottom: 24px;
-    }
-
-    .nav {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #526179;
-    }
-
-    .nav a {
-      color: #276ef1;
-      text-decoration: none;
-    }
-
-    .nav a:hover {
-      text-decoration: underline;
+      margin: 16px;
+      background: var(--g-bg);
+      color: var(--g-text);
+      line-height: 1.4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1.1;
-      letter-spacing: 0;
+      margin: 0 0 6px 0;
+      font-size: 20px;
     }
 
-    .description {
-      max-width: 760px;
-      margin: 0;
-      color: #526179;
+    a {
+      color: var(--g-action);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 12px 0 16px;
+    }
+
+    @media (max-width: 900px) {
+      .compare {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      border: 1px solid var(--g-border);
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--g-panel);
+    }
+
+    .panel h2 {
+      margin: 0 0 8px 0;
       font-size: 16px;
+      color: var(--g-muted);
     }
 
-    .inputs {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: end;
-      gap: 14px;
-      padding: 18px;
-      margin-bottom: 20px;
-      border: 1px solid #d9e2ef;
+    .muted {
+      color: var(--g-muted);
+      font-size: 13px;
+    }
+
+    .code {
+      margin: 8px 0 0 0;
+      padding: 10px;
+      border: 1px solid var(--g-border);
       border-radius: 8px;
-      background: #ffffff;
-      box-shadow: 0 12px 30px rgba(22, 32, 51, 0.06);
+      background: var(--g-surface);
+      font-family: monospace;
+      font-size: 12.5px;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     label {
-      display: grid;
-      gap: 6px;
-      min-width: 160px;
-      color: #394861;
-      font-weight: 650;
-      font-size: 14px;
+      display: block;
+      margin: 8px 0 4px;
+      font-weight: 600;
     }
 
-    input,
-    textarea {
+    input[type="text"] {
       width: 100%;
-      border: 1px solid #c8d4e4;
+      box-sizing: border-box;
+      padding: 8px 10px;
       border-radius: 8px;
-      background: #ffffff;
-      color: #162033;
-      font: inherit;
-    }
-
-    input {
-      height: 42px;
-      padding: 0 12px;
+      border: 1px solid var(--g-border);
+      background: var(--g-surface);
+      color: var(--g-text);
       text-transform: uppercase;
     }
 
-    textarea {
-      min-height: 430px;
-      padding: 14px;
-      resize: vertical;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      font-size: 14px;
-      line-height: 1.45;
+    input[type="text"]:focus {
+      outline: 2px solid var(--g-hover);
+      outline-offset: 2px;
+      border-color: rgba(255, 255, 255, 0.4);
     }
 
-    input:focus,
+    textarea {
+      width: 100%;
+      min-height: 320px;
+      resize: vertical;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--g-border);
+      background: var(--g-surface);
+      color: var(--g-text);
+      font-family: monospace;
+      font-size: 13px;
+    }
+
     textarea:focus {
-      outline: 3px solid rgba(39, 110, 241, 0.18);
-      border-color: #276ef1;
+      outline: 2px solid var(--g-hover);
+      outline-offset: 2px;
+      border-color: rgba(255, 255, 255, 0.4);
     }
 
     button {
-      height: 42px;
-      padding: 0 18px;
-      border: 0;
+      margin-top: 10px;
+      padding: 8px 12px;
       border-radius: 8px;
-      background: #276ef1;
-      color: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.25);
+      background: var(--g-action);
+      color: rgba(0, 0, 0, 0.88);
       cursor: pointer;
-      font-weight: 700;
-      font-size: 14px;
+      font-weight: 600;
     }
 
     button:hover {
-      background: #1f5fd6;
+      filter: brightness(1.03);
     }
 
     button:active {
       transform: translateY(1px);
     }
 
-    .columns {
-      display: flex;
-      gap: 20px;
-      align-items: stretch;
-    }
-
-    .column {
-      flex: 1 1 0;
-      min-width: 0;
-    }
-
-    h2 {
-      margin: 0 0 10px;
-      color: #394861;
-      font-size: 16px;
-    }
-
     pre {
-      min-height: 430px;
       margin: 0;
-      padding: 14px;
-      overflow: auto;
+      padding: 12px;
+      border: 1px solid var(--g-border);
       border-radius: 8px;
-      background: #111827;
-      color: #e5edf8;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      font-size: 14px;
-      line-height: 1.45;
+      min-height: 320px;
+      overflow: auto;
       white-space: pre-wrap;
       word-break: break-word;
+      background: var(--g-surface);
+      color: var(--g-text);
+      font-family: monospace;
+      font-size: 13px;
     }
 
-    @media (max-width: 760px) {
-      main {
-        width: min(100% - 24px, 1000px);
-        padding: 28px 0;
-      }
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
 
-      .columns {
-        flex-direction: column;
-      }
+    .stack h3 {
+      margin: 0;
+      font-size: 13px;
+      color: var(--g-muted);
+      font-weight: 600;
+    }
 
-      label {
-        min-width: 100%;
-      }
-
-      button {
-        width: 100%;
-      }
+    .stack pre {
+      min-height: unset;
     }
   </style>
 </head>
 <body>
-  <main>
-    <section class="hero">
-      <h1>Demo 3: Aliases &amp; Fragments</h1>
-      <div class="nav"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a> · <a href="demo3.html">Demo 3</a> · <a href="demo4.html">Demo 4</a></div>
-      <p class="description">
-        GraphQL aliases solve key collisions when fetching multiple records of the same type in one request,
-        while fragments keep repeated field selections reusable and consistent.
-      </p>
-    </section>
+  <h1>GraphQL Demo 3: Aliases &amp; Fragments</h1>
+  <div class="muted"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a> · <a href="demo3.html">Demo 3</a> · <a href="demo4.html">Demo 4</a></div>
 
-    <section class="inputs" aria-label="Country comparison inputs">
-      <label for="code1">
-        Country code 1
-        <input id="code1" type="text" value="VN" maxlength="2">
-      </label>
+  <div class="compare">
+    <div class="panel">
+      <h2>REST API (typical approach)</h2>
+      <div class="muted">To compare two countries, REST often becomes multiple requests.</div>
+      <div class="code">GET /countries/VN
+GET /countries/JP</div>
+      <div class="muted" style="margin-top: 8px;">You have to merge results on the client.</div>
+    </div>
 
-      <label for="code2">
-        Country code 2
-        <input id="code2" type="text" value="JP" maxlength="2">
-      </label>
+    <div class="panel">
+      <h2>GraphQL (aliases + fragments)</h2>
+      <div class="muted"><b>One request</b> can fetch both countries. Aliases avoid key collisions, fragments reuse field selections.</div>
+      <div class="code">POST https://countries.trevorblades.com/
+
+fragment CountryDetails on Country {
+  name
+  capital
+  currency
+  emoji
+}
+
+query CompareCountries($code1: ID!, $code2: ID!) {
+  countryA: country(code: $code1) { ...CountryDetails }
+  countryB: country(code: $code2) { ...CountryDetails }
+}</div>
+      <div class="muted" style="margin-top: 8px;">Returned JSON keys are <b>countryA</b> and <b>countryB</b>.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Query</h2>
+      <label for="code1">Country code 1</label>
+      <input id="code1" type="text" value="VN" maxlength="2" />
+
+      <label for="code2">Country code 2</label>
+      <input id="code2" type="text" value="JP" maxlength="2" />
+
+      <label for="query">GraphQL query</label>
+      <div class="muted">Tip: add/remove fields inside <b>CountryDetails</b> and re-run.</div>
+      <textarea id="query" spellcheck="false"></textarea>
 
       <button type="button" id="compareBtn">Compare (1 Request)</button>
-    </section>
+    </div>
 
-    <section class="columns">
-      <div class="column">
-        <h2>GraphQL Query</h2>
-        <textarea id="query" spellcheck="false"></textarea>
+    <div class="panel">
+      <h2>Result</h2>
+      <div class="stack">
+        <div>
+          <h3>Result JSON</h3>
+          <pre id="result">Click "Compare (1 Request)" to run the query.</pre>
+        </div>
       </div>
-
-      <div class="column">
-        <h2>JSON Response</h2>
-        <pre id="result">Click "Compare (1 Request)" to run the query.</pre>
-      </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <script>
     const endpoint = "https://countries.trevorblades.com/";
