@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo 3: Aliases & Fragments</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f7fb;
+      color: #162033;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1000px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    .hero {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .description {
+      max-width: 760px;
+      margin: 0;
+      color: #526179;
+      font-size: 16px;
+    }
+
+    .inputs {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 14px;
+      padding: 18px;
+      margin-bottom: 20px;
+      border: 1px solid #d9e2ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 30px rgba(22, 32, 51, 0.06);
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      min-width: 160px;
+      color: #394861;
+      font-weight: 650;
+      font-size: 14px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #c8d4e4;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #162033;
+      font: inherit;
+    }
+
+    input {
+      height: 42px;
+      padding: 0 12px;
+      text-transform: uppercase;
+    }
+
+    textarea {
+      min-height: 430px;
+      padding: 14px;
+      resize: vertical;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: 3px solid rgba(39, 110, 241, 0.18);
+      border-color: #276ef1;
+    }
+
+    button {
+      height: 42px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #276ef1;
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #1f5fd6;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .columns {
+      display: flex;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .column {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      color: #394861;
+      font-size: 16px;
+    }
+
+    pre {
+      min-height: 430px;
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 8px;
+      background: #111827;
+      color: #e5edf8;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100% - 24px, 1000px);
+        padding: 28px 0;
+      }
+
+      .columns {
+        flex-direction: column;
+      }
+
+      label {
+        min-width: 100%;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>Demo 3: Aliases &amp; Fragments</h1>
+      <p class="description">
+        GraphQL aliases solve key collisions when fetching multiple records of the same type in one request,
+        while fragments keep repeated field selections reusable and consistent.
+      </p>
+    </section>
+
+    <section class="inputs" aria-label="Country comparison inputs">
+      <label for="code1">
+        Country code 1
+        <input id="code1" type="text" value="VN" maxlength="2">
+      </label>
+
+      <label for="code2">
+        Country code 2
+        <input id="code2" type="text" value="JP" maxlength="2">
+      </label>
+
+      <button type="button" id="compareBtn">Compare (1 Request)</button>
+    </section>
+
+    <section class="columns">
+      <div class="column">
+        <h2>GraphQL Query</h2>
+        <textarea id="query" spellcheck="false"></textarea>
+      </div>
+
+      <div class="column">
+        <h2>JSON Response</h2>
+        <pre id="result">Click "Compare (1 Request)" to run the query.</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const endpoint = "https://countries.trevorblades.com/";
+
+    const defaultQuery = `fragment CountryDetails on Country {
+  name
+  capital
+  currency
+  emoji
+}
+query CompareCountries($code1: ID!, $code2: ID!) {
+  countryA: country(code: $code1) {
+    ...CountryDetails
+  }
+  countryB: country(code: $code2) {
+    ...CountryDetails
+  }
+}`;
+
+    const queryEl = document.getElementById("query");
+    const resultEl = document.getElementById("result");
+    const code1El = document.getElementById("code1");
+    const code2El = document.getElementById("code2");
+    const compareBtn = document.getElementById("compareBtn");
+
+    queryEl.value = defaultQuery;
+
+    async function compareCountries() {
+      const code1 = code1El.value.trim().toUpperCase();
+      const code2 = code2El.value.trim().toUpperCase();
+      const query = queryEl.value;
+
+      resultEl.textContent = "Loading...";
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            query,
+            variables: { code1, code2 }
+          })
+        });
+
+        const result = await response.json();
+        resultEl.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        resultEl.textContent = String(error);
+      }
+    }
+
+    compareBtn.addEventListener("click", compareCountries);
+  </script>
+</body>
+</html>
