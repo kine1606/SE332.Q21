@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo 4: Introspection (Self-Documenting API)</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fb;
+      color: #172033;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1200px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .description {
+      max-width: 780px;
+      margin: 0;
+      color: #536179;
+      font-size: 16px;
+    }
+
+    button {
+      min-width: 190px;
+      height: 46px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 750;
+      font-size: 15px;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .columns {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .column {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      color: #39465d;
+      font-size: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      padding: 14px;
+      resize: vertical;
+      border: 1px solid #c9d4e5;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #172033;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    textarea:focus {
+      outline: 3px solid rgba(37, 99, 235, 0.18);
+      border-color: #2563eb;
+    }
+
+    pre {
+      min-height: 620px;
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 8px;
+      background: #101827;
+      color: #e8eef8;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .docs {
+      min-height: 340px;
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 30px rgba(23, 32, 51, 0.06);
+    }
+
+    .docs-empty {
+      margin: 0;
+      color: #66758d;
+    }
+
+    .schema-title {
+      margin: 0 0 14px;
+      color: #172033;
+      font-size: 18px;
+    }
+
+    .field-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .field-card {
+      padding: 14px;
+      border: 1px solid #e0e7f2;
+      border-radius: 8px;
+      background: #fbfcff;
+    }
+
+    .field-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .field-name {
+      color: #0f172a;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .return-type {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eaf1ff;
+      color: #1d4ed8;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .field-description {
+      margin: 0;
+      color: #536179;
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      main {
+        width: min(100% - 24px, 1200px);
+        padding: 28px 0;
+      }
+
+      .hero {
+        display: grid;
+        align-items: start;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .columns {
+        flex-direction: column;
+      }
+
+      pre {
+        min-height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <h1>Demo 4: Introspection (Self-Documenting API)</h1>
+        <p class="description">
+          GraphQL introspection lets the client query the server's schema directly, so the API can describe
+          available queries and return types without relying on external tools like Swagger.
+        </p>
+      </div>
+      <button type="button" id="scanBtn">Scan API Server</button>
+    </section>
+
+    <section class="columns">
+      <div class="column">
+        <h2>Introspection Query</h2>
+        <textarea id="query" readonly spellcheck="false"></textarea>
+        <div id="uiOutput" class="docs">
+          <p class="docs-empty">Click "Scan API Server" to generate API documentation from the schema.</p>
+        </div>
+      </div>
+
+      <div class="column">
+        <h2>Raw JSON Response</h2>
+        <pre id="jsonOutput">Click "Scan API Server" to inspect the schema.</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const endpoint = "https://countries.trevorblades.com/";
+
+    const introspectionQuery = `query DiscoverAPI {
+  __schema {
+    queryType {
+      name
+      fields {
+        name
+        description
+        type {
+          name
+          kind
+        }
+      }
+    }
+  }
+}`;
+
+    const queryEl = document.getElementById("query");
+    const uiOutputEl = document.getElementById("uiOutput");
+    const jsonOutputEl = document.getElementById("jsonOutput");
+    const scanBtn = document.getElementById("scanBtn");
+
+    queryEl.value = introspectionQuery;
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderApiDocs(fields) {
+      if (!Array.isArray(fields) || fields.length === 0) {
+        uiOutputEl.innerHTML = '<p class="docs-empty">No query fields were found in the schema.</p>';
+        return;
+      }
+
+      const items = fields.map((field) => {
+        const name = field.name || "Unnamed query";
+        const description = field.description || "No description";
+        const returnType = field.type?.name || field.type?.kind || "Unknown";
+
+        return `
+          <li class="field-card">
+            <div class="field-header">
+              <span class="field-name">${escapeHtml(name)}</span>
+              <span class="return-type">${escapeHtml(returnType)}</span>
+            </div>
+            <p class="field-description">${escapeHtml(description)}</p>
+          </li>
+        `;
+      }).join("");
+
+      uiOutputEl.innerHTML = `
+        <h2 class="schema-title">Available Query Fields</h2>
+        <ul class="field-list">${items}</ul>
+      `;
+    }
+
+    async function scanApiServer() {
+      jsonOutputEl.textContent = "Scanning...";
+      uiOutputEl.innerHTML = '<p class="docs-empty">Scanning...</p>';
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ query: introspectionQuery })
+        });
+
+        const result = await response.json();
+        jsonOutputEl.textContent = JSON.stringify(result, null, 2);
+
+        const fields = result.data?.__schema?.queryType?.fields || [];
+        renderApiDocs(fields);
+      } catch (error) {
+        jsonOutputEl.textContent = String(error);
+        uiOutputEl.innerHTML = `<p class="docs-empty">${escapeHtml(error)}</p>`;
+      }
+    }
+
+    scanBtn.addEventListener("click", scanApiServer);
+  </script>
+</body>
+</html>
