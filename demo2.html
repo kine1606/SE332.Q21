@@ -173,7 +173,7 @@
 </head>
 <body>
   <h1>GraphQL Demo 2: Query lồng nhau (countries → languages → name)</h1>
-  <div class="muted"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a></div>
+  <div class="muted"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a> · <a href="demo3.html">Demo 3</a> · <a href="demo4.html">Demo 4</a></div>
 
   <div class="compare">
     <div class="panel">
@@ -183,7 +183,7 @@
 
 # then for each country:
 GET /countries/{code}/languages</div>
-      <div class="muted" style="margin-top: 8px;">This can turn into the “N+1 requests” problem.</div>
+      <div class="muted" style="margin-top: 8px;">This can turn into the many HTTP requests problem.</div>
     </div>
 
     <div class="panel">
@@ -234,10 +234,10 @@ query {
 
     const defaultQuery = `query {
   countries {
-    code
     name
     languages {
       name
+      code
     }
   }
 }`;
@@ -247,6 +247,23 @@ query {
     const resultEl = document.getElementById("result");
 
     queryEl.value = defaultQuery;
+
+    // Make Tab behave like an editor: insert indentation instead of moving focus.
+    queryEl.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab" || e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      e.preventDefault();
+
+      const start = queryEl.selectionStart ?? 0;
+      const end = queryEl.selectionEnd ?? 0;
+      const tab = "    ";
+
+      // Replace selection with a tab and place cursor after it.
+      queryEl.setRangeText(tab, start, end, "end");
+      updateSqlPreview();
+    });
 
     function findMatchingBrace(text, openBraceIndex) {
       let depth = 0;
@@ -458,18 +475,59 @@ query {
 
       const { scalarFields, nestedFields, nestedSelectionMap } = parseTopLevelFields(extracted.selectionText);
 
-      // If the query asks for nested languages, show a JOIN-style SQL mental model.
+      // If the query asks for certain nested objects, show a JOIN-style SQL mental model.
+      // This is illustrative only; actual server resolvers/DB schema may differ.
       const languageFields = nestedSelectionMap.languages;
-      if (Array.isArray(languageFields)) {
+      const continentFields = nestedSelectionMap.continent;
+
+      const hasLanguages = Array.isArray(languageFields);
+      const hasContinent = Array.isArray(continentFields);
+
+      if (hasLanguages || hasContinent) {
         const countryCols = (scalarFields.length ? scalarFields : ["code", "name"]).map(f => `c.${f}`);
-        const langCols = (languageFields.length ? languageFields : ["name"]).map(f => {
-          const alias = f === "name" ? "language_name" : `language_${f}`;
-          return `l.${f} AS ${alias}`;
-        });
+        const extraCols = [];
+        const joins = [];
 
-        const selectCols = [...countryCols, ...langCols].join(",\n    ");
+        if (hasContinent) {
+          const contCols = (continentFields.length ? continentFields : ["name"]).map(f => {
+            const alias = f === "name" ? "continent_name" : `continent_${f}`;
+            return `ct.${f} AS ${alias}`;
+          });
+          extraCols.push(...contCols);
+          joins.push("LEFT JOIN continents ct\n    ON c.continent_code = ct.code");
+        }
 
-        return `SELECT\n    ${selectCols}\nFROM countries c\nLEFT JOIN country_languages cl\n    ON c.code = cl.country_code\nLEFT JOIN languages l\n    ON cl.language_code = l.code;\n\n-- Note: SQL JOIN returns flat rows; GraphQL groups languages under each country.`;
+        if (hasLanguages) {
+          const langCols = (languageFields.length ? languageFields : ["name"]).map(f => {
+            const alias = f === "name" ? "language_name" : `language_${f}`;
+            return `l.${f} AS ${alias}`;
+          });
+          extraCols.push(...langCols);
+          joins.push(
+            "LEFT JOIN country_languages cl\n    ON c.code = cl.country_code\nLEFT JOIN languages l\n    ON cl.language_code = l.code"
+          );
+        }
+
+        const selectCols = [...countryCols, ...extraCols].join(",\n    ");
+
+        const otherNested = Object.keys(nestedSelectionMap)
+          .filter(k => k !== "languages" && k !== "continent")
+          .map(k => {
+            const fields = nestedSelectionMap[k];
+            return `${k} { ${Array.isArray(fields) && fields.length ? fields.join(", ") : "..."} }`;
+          });
+
+        const otherNestedComment = otherNested.length
+          ? `\n\n-- Other nested selections (mental model):\n-- ${otherNested.join("\n-- ")}`
+          : "";
+
+        const notes = hasLanguages
+          ? "-- Note: This is an optimized SQL example. GraphQL can request nested data in one HTTP request, but the backend must use JOIN, batching, or DataLoader to avoid N+1 database queries."
+          : "-- Note: GraphQL nests continent under each country.";
+
+        const joinSql = joins.length ? `\n${joins.join("\n")}` : "";
+
+        return `SELECT\n    ${selectCols}\nFROM countries c${joinSql};\n\n${notes}${otherNestedComment}`;
       }
 
       const columns = scalarFields.length ? scalarFields.map(f => `c.${f}`).join(", ") : "c.*";

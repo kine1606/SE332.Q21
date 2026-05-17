@@ -1,0 +1,53 @@
+SCRIPT THUYẾT TRÌNH ~5 PHÚT (GraphQL Demo 1 & Demo 2)
+Dựa trên: index.html (Demo 1) và demo2.html (Demo 2)
+
+0:00–0:20 — MỞ ĐẦU
+“Chào mọi người, hôm nay mình demo nhanh cách GraphQL hoạt động qua 2 ví dụ dùng public API https://countries.trevorblades.com/. 
+Mục tiêu là thấy rõ: GraphQL cho phép client tự chọn fields và lấy dữ liệu lồng nhau trong một request.”
+
+0:20–1:05 — REST VS GRAPHQL (VẤN ĐỀ)
+“Ở REST, khi UI cần các tổ hợp dữ liệu khác nhau, mình hay phải tạo nhiều endpoint hoặc thêm query params. 
+Ví dụ cùng 1 quốc gia nhưng lúc cần name+currency, lúc cần name+emoji, lúc cần name+capital… 
+dễ dẫn đến nhiều endpoint hoặc API phình to.
+GraphQL thì khác: thường chỉ một endpoint, và thứ thay đổi là query.”
+
+1:05–2:30 — DEMO 1 (index.html): CHỌN FIELDS GIỐNG ‘SELECT COLUMNS’
+“Mình mở Demo 1. Ở đây có 2 phần: bên trái là query, bên phải là kết quả JSON 
+và một ‘SQL mental model’ auto-generate để dễ liên tưởng.
+Mặc định query đang hỏi:
+  country(code: $code) { name capital }
+Với country code là VN.
+
+(Thao tác live)
+1) Mình bấm getCountry(country) → bên phải trả JSON đúng 2 fields name và capital.
+2) Giờ mình sửa query: thêm emoji và currency, thậm chí thêm languages { name }.
+3) Bấm chạy lại → JSON tự đổi shape theo đúng những fields mình yêu cầu, không cần đổi endpoint.
+
+Điểm hay: fields mình liệt kê giống như các cột trong SELECT (mental model thôi, GraphQL không phải SQL). 
+Preview SQL bên phải giúp thấy: chọn field nào thì ‘SELECT’ tương ứng thay đổi.”
+
+2:30–3:05 — DEMO 1: BIẾN / VARIABLES
+“Demo 1 cũng cho thấy GraphQL variables: query dùng $code, còn giá trị thực nhập ở ô Country code.
+Khi mình đổi từ VN sang JP hoặc US và chạy lại, query giữ nguyên, chỉ thay variables.”
+
+3:05–4:25 — DEMO 2 (demo2.html): NESTED QUERY & TRÁNH N+1 REQUESTS
+“Tiếp theo là Demo 2 nói về query lồng nhau:
+  countries { code name languages { name } }
+Với REST, nếu muốn danh sách countries và languages của từng country, 
+thường sẽ rơi vào nhiều request: 1 request lấy countries, rồi mỗi country lại gọi tiếp languages → bài toán N+1 requests.
+
+(Thao tác live)
+1) Mình bấm runQuery() → trả về JSON mà mỗi country đã có languages nằm lồng bên trong.
+2) Mình thử xóa field name hoặc thêm emoji trong query → chạy lại và thấy response thay đổi ngay.
+
+Demo cũng có ‘SQL mental model’ kiểu JOIN để minh hoạ: SQL JOIN thường ra dữ liệu dạng bảng phẳng, còn GraphQL response giữ được cấu trúc lồng nhau (group languages dưới từng country).”
+
+4:25–4:55 — KẾT LUẬN (3 Ý CHÍNH)
+“Tóm lại, 2 demo này nhấn mạnh 3 ý:
+(1) One endpoint — đổi query thay vì đổi endpoint.
+(2) Client chọn fields — giảm over-fetch/under-fetch.
+(3) Nested query — lấy dữ liệu liên quan trong một request, 
+giảm nguy cơ N+1 ở phía client.”
+
+4:55–5:00 — KẾT THÚC
+“Cảm ơn mọi người. Nếu còn thời gian mình có thể demo nhanh thêm việc thêm/bớt fields để thấy response thay đổi theo nhu cầu UI.”

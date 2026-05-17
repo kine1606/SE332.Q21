@@ -28,6 +28,21 @@
       margin-bottom: 24px;
     }
 
+    .nav {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #526179;
+    }
+
+    .nav a {
+      color: #276ef1;
+      text-decoration: none;
+    }
+
+    .nav a:hover {
+      text-decoration: underline;
+    }
+
     h1 {
       margin: 0 0 8px;
       font-size: clamp(28px, 4vw, 42px);
@@ -171,6 +186,7 @@
   <main>
     <section class="hero">
       <h1>Demo 3: Aliases &amp; Fragments</h1>
+      <div class="nav"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a> · <a href="demo3.html">Demo 3</a> · <a href="demo4.html">Demo 4</a></div>
       <p class="description">
         GraphQL aliases solve key collisions when fetching multiple records of the same type in one request,
         while fragments keep repeated field selections reusable and consistent.

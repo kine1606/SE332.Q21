@@ -46,6 +46,21 @@
       font-size: 16px;
     }
 
+    .nav {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #536179;
+    }
+
+    .nav a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    .nav a:hover {
+      text-decoration: underline;
+    }
+
     button {
       min-width: 190px;
       height: 46px;
@@ -217,6 +232,7 @@
     <section class="hero">
       <div>
         <h1>Demo 4: Introspection (Self-Documenting API)</h1>
+        <div class="nav"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a> · <a href="demo3.html">Demo 3</a> · <a href="demo4.html">Demo 4</a></div>
         <p class="description">
           GraphQL introspection lets the client query the server's schema directly, so the API can describe
           available queries and return types without relying on external tools like Swagger.
