@@ -196,6 +196,12 @@
   <h1>GraphQL Demo 1: Country Query</h1>
   <div class="muted"><a href="index.html">Demo 1</a> · <a href="demo2.html">Demo 2</a> · <a href="demo3.html">Demo 3</a> · <a href="demo4.html">Demo 4</a></div>
 
+  <div class="panel" style="margin: 12px 0 16px;">
+    <h2>SQL table</h2>
+    <div class="muted">Based on the GraphQL <b>Country</b> type.</div>
+    <pre id="schemaSql">Loading country schema...</pre>
+  </div>
+
   <div class="compare">
     <div class="panel">
       <h2>REST API (typical approach)</h2>
@@ -244,7 +250,7 @@ WHERE code = $code;</div>
       <h2>Result</h2>
       <div class="stack">
         <div>
-          <h3>SQL mental model (auto-generated)</h3>
+          <h3>SQL mental model</h3>
           <pre id="sql">Edit the query to see the SQL preview.</pre>
         </div>
         <div>
@@ -265,11 +271,47 @@ WHERE code = $code;</div>
   }
 }`;
 
+    const schemaQuery = `query CountryFields {
+  __type(name: "Country") {
+    fields {
+      name
+      type {
+        name
+        kind
+        ofType {
+          name
+          kind
+          ofType {
+            name
+            kind
+          }
+        }
+      }
+    }
+  }
+}`;
+
     const queryEl = document.getElementById("query");
     queryEl.value = defaultQuery;
 
+        queryEl.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab" || e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      e.preventDefault();
+
+      const start = queryEl.selectionStart ?? 0;
+      const end = queryEl.selectionEnd ?? 0;
+      const tab = "    ";
+
+      // Replace selection with a tab and place cursor after it.
+      queryEl.setRangeText(tab, start, end, "end");
+      updateSqlPreview();
+    });
     const sqlEl = document.getElementById("sql");
     const countryCodeEl = document.getElementById("countryCode");
+    const schemaSqlEl = document.getElementById("schemaSql");
 
     function findMatchingBrace(text, openBraceIndex) {
       let depth = 0;
@@ -530,6 +572,60 @@ WHERE code = $code;</div>
     countryCodeEl.addEventListener("input", updateSqlPreview);
     updateSqlPreview();
 
+    function unwrapType(typeInfo) {
+      let t = typeInfo;
+      let isList = false;
+
+      while (t) {
+        if (t.kind === "LIST") {
+          isList = true;
+        }
+        if (!t.ofType) {
+          return { baseName: t.name || "Unknown", isList };
+        }
+        t = t.ofType;
+      }
+
+      return { baseName: "Unknown", isList };
+    }
+
+    function mapGraphqlTypeToSql(typeInfo) {
+      const { baseName, isList } = unwrapType(typeInfo);
+
+      if (isList) {
+        return "TEXT";
+      }
+
+      switch (baseName) {
+        case "ID":
+        case "String":
+          return "TEXT";
+        case "Boolean":
+          return "BOOLEAN";
+        case "Int":
+          return "INTEGER";
+        case "Float":
+          return "REAL";
+        default:
+          return "TEXT";
+      }
+    }
+
+    function buildCreateTableSql(fields) {
+      if (!Array.isArray(fields) || fields.length === 0) {
+        return "CREATE TABLE country (\n  -- no fields\n);";
+      }
+
+      const rows = fields.map((field) => {
+        const name = field.name || "unknown";
+        const sqlType = mapGraphqlTypeToSql(field.type);
+        const pk = name === "code" ? " PRIMARY KEY" : "";
+        return `  ${name} ${sqlType}${pk}`;
+      });
+
+      return `CREATE TABLE country (\n${rows.join(",\n")}\n);`;
+    }
+
     async function getCountry(countryCode) {
       const resultEl = document.getElementById("result");
       const queryText = queryEl.value;
@@ -565,7 +661,31 @@ WHERE code = $code;</div>
       }
     }
 
+    async function loadCountrySchema() {
+      if (!schemaSqlEl) {
+        return;
+      }
+      schemaSqlEl.textContent = "Loading country schema...";
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ query: schemaQuery })
+        });
+
+        const result = await response.json();
+        const fields = result.data?.__type?.fields || [];
+        schemaSqlEl.textContent = buildCreateTableSql(fields);
+      } catch (err) {
+        schemaSqlEl.textContent = String(err);
+      }
+    }
+
     window.getCountry = getCountry;
+    loadCountrySchema();
   </script>
 </body>
 </html>

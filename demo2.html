@@ -183,6 +183,18 @@
 
 # then for each country:
 GET /countries/{code}/languages</div>
+      <div class="muted" style="margin-top: 8px;"><b>SQL N+1 pattern (same idea)</b>: 1 query + N queries</div>
+      <div class="code">-- 1 query (get parent rows)
+SELECT code, name
+FROM countries;
+
+-- N queries (get child rows per parent)
+-- repeated once per country code
+SELECT l.code, l.name
+FROM country_languages cl
+JOIN languages l
+  ON l.code = cl.language_code
+WHERE cl.country_code = :code;</div>
       <div class="muted" style="margin-top: 8px;">This can turn into the many HTTP requests problem.</div>
     </div>
 
